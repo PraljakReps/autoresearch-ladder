@@ -4,6 +4,9 @@ data/
 logs/
 *.log
 
+# Per-level autoresearch experiment log (tab-separated, one row per run)
+levels/**/results.tsv
+
 # Model weights / large artifacts
 *.pt
 *.pth

@@ -1,10 +1,14 @@
-"""L0: linear regression wiring test.
+"""L0: linear regression — autoresearch loop scaffold.
 
-Generates synthetic y = X @ w + b + noise, fits sklearn LinearRegression on a
-train split, evaluates MSE and R^2 on a held-out test split, and writes results
-to both stdout and a timestamped directory under results/.
+Generates a fixed synthetic regression problem (y = X @ w + b + noise), fits a
+model on the train split, scores MSE and R² on a held-out test split, and
+writes metrics to a timestamped directory under results/.
 
-This is a plumbing check, not a research task. No knobs to tune.
+This file is the editable surface of L0. Each autoresearch experiment changes
+the model definition inside `fit_and_predict` and nothing else. The data
+generation (`make_data`), splits, and metric reporting are part of the fixed
+evaluation harness — do not modify them mid-loop. Per-level rules live in
+`program.md`.
 """
 
 from __future__ import annotations
@@ -16,21 +20,32 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = REPO_ROOT / "results" / "L0_linear_regression"
 
+MODEL_DESCRIPTION = "mean-predictor baseline"
+
 
 def make_data(n: int, d: int, noise: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    """Fixed data-generating process. Do not modify during the autoresearch loop."""
     rng = np.random.default_rng(seed)
     X = rng.standard_normal((n, d))
     w = rng.standard_normal(d)
     b = rng.standard_normal()
     y = X @ w + b + noise * rng.standard_normal(n)
     return X, y
+
+
+def fit_and_predict(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray) -> np.ndarray:
+    """The only function you change between experiments.
+
+    Returns predictions on X_test. Starting baseline: predict the training mean.
+    Expected R² ≈ 0 (predicts the unconditional mean, ignores X entirely).
+    """
+    return np.full(X_test.shape[0], y_train.mean())
 
 
 def main() -> int:
@@ -51,9 +66,7 @@ def main() -> int:
         X, y, test_size=args.test_size, random_state=args.seed
     )
 
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    y_pred = fit_and_predict(X_train, y_train, X_test)
 
     mse = float(mean_squared_error(y_test, y_pred))
     r2 = float(r2_score(y_test, y_pred))
@@ -66,6 +79,7 @@ def main() -> int:
         "finished_at": finished_at.isoformat(),
         "duration_seconds": (finished_at - started_at).total_seconds(),
         "config": vars(args),
+        "model": MODEL_DESCRIPTION,
         "metrics": {"mse": mse, "r2": r2},
     }
 
@@ -75,15 +89,13 @@ def main() -> int:
     transcript = run_dir / "transcript.md"
     transcript.write_text(
         f"# L0 run @ {started_at.isoformat()}\n\n"
-        f"**Hypothesis:** none — this is a wiring test.\n\n"
+        f"**Model:** {MODEL_DESCRIPTION}\n\n"
         f"**Config:** `{vars(args)}`\n\n"
-        f"**Result:** MSE = {mse:.6f}, R² = {r2:.6f}\n\n"
-        f"**Attribution:** synthetic data is linear with Gaussian noise sigma={args.noise}; "
-        f"OLS recovers w and b up to noise, so R^2 should be near 1 and MSE near sigma^2.\n"
+        f"**Result:** MSE = {mse:.6f}, R² = {r2:.6f}\n"
     )
 
     print(f"L0 metrics → {metrics_path}")
-    print(f"mse={mse:.6f} r2={r2:.6f}")
+    print(f"RESULT_JSON {json.dumps({'mse': mse, 'r2': r2, 'model': MODEL_DESCRIPTION})}")
     return 0
 
 
