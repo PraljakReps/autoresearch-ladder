@@ -1,0 +1,3 @@
+commit	metric	status	description
+1d42fe2	-0.020502	keep	mean-predictor baseline (commit-0 floor; ignores X)
+5b61e82	0.997896	keep	OLS via sklearn LinearRegression; hits noise ceiling, predicted ~0.998

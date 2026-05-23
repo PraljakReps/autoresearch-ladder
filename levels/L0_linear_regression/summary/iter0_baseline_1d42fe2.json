@@ -1,0 +1,18 @@
+{
+  "level": "L0_linear_regression",
+  "started_at": "2026-05-23T23:06:59.149818+00:00",
+  "finished_at": "2026-05-23T23:06:59.154275+00:00",
+  "duration_seconds": 0.004457,
+  "config": {
+    "n": 1000,
+    "d": 5,
+    "noise": 0.1,
+    "seed": 0,
+    "test_size": 0.2
+  },
+  "model": "mean-predictor baseline",
+  "metrics": {
+    "mse": 4.735411704179345,
+    "r2": -0.02050183352907986
+  }
+}

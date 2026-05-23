@@ -28,8 +28,8 @@ Each level mirrors the three-file split that makes karpathy's loop tight, genera
 Per-level invariants:
 - **Fixed compute/time budget per run** so experiments are directly comparable across the session. Budget unit is per-level (e.g. minutes of training, k folds, fixed optimizer steps). Don't relitigate the budget mid-session.
 - **One primary metric** from the evaluator. All keep/discard decisions hinge on it.
-- **Branch per run tag**: `autoresearch/LN-<tag>` (e.g. `autoresearch/L2-mar5`). One experiment = one commit on that branch.
-- **`results.tsv`** at the level root, tab-separated, **gitignored — do not commit**:
+- **Branch per run tag**: `autoresearch/LN-<tag>` (e.g. `autoresearch/L2-mar5`). One experiment = one commit on that branch. At level wrap, merge the branch into `main` with `--no-ff` so the autoresearch lineage is preserved in main's history.
+- **`results.tsv`** at the level root, tab-separated. Appended to during the loop, **committed at level wrap** as part of the summary bundle (see Wrap convention below). Format:
   ```
   commit	metric	status	description
   ```
@@ -44,6 +44,25 @@ Per-level invariants:
 5. Score from the metrics file (or `grep` the summary line). If the grep is empty, `tail -n 50 run.log` for the stack trace.
 6. Append the row to `results.tsv`.
 7. If the metric improved → branch stays advanced (keep). Else → `git reset --hard HEAD~1` (discard).
+
+### Wrap convention (what lands on `main` when a level is done)
+
+When a level is declared done, consolidate the loop's output into the **level summary bundle** and merge it to `main`. The bundle is the durable record; the raw per-run timestamped dirs under `results/` stay local-only.
+
+Tracked under `levels/LN_<name>/`:
+
+- `RESULTS.md` — the level write-up: table of kept commits, hypothesis log per experiment, stop reason, what the level did/didn't exercise.
+- `figures/*.png` — at minimum a metric-vs-commit-iteration plot, annotated with the model innovation introduced at each step.
+- `results.tsv` — the experiment log (one row per run, including discards/crashes — discards are the record of what was tried and reverted).
+- `summary/iter<N>_<short-tag>_<sha>.json` — a snapshot of each **kept** commit's `metrics.json`, copied out of the corresponding `results/LN_<name>/<ts>/` dir with a meaningful filename. One file per kept commit.
+- `plot_results.py` (or equivalent) — the script that regenerates the figure(s) from `results.tsv`.
+
+Untracked, stays under top-level `results/`:
+
+- `results/LN_<name>/<ts>/{metrics.json,transcript.md}` — raw per-run outputs (every invocation, including crashes and discarded runs). Free-for-all per pod.
+- `levels/LN_<name>/run.log` — last-run stdout.
+
+Wrap-time flow: copy the kept-commit metrics into `summary/`, regenerate the figure, write `RESULTS.md`, commit the bundle on the autoresearch branch, then merge to `main` with `--no-ff`.
 
 ### Within-level vs. across-level stopping (reconciliation of karpathy's "never stop")
 
@@ -69,14 +88,15 @@ Karpathy's `program.md` says **never stop** — keep generating ideas until the 
 
 - Per-level work lives under `levels/LN_<name>/`.
 - Automatic scorers live under `evaluators/`. Every task must have a scorer that returns an unambiguous metric without human judgment.
-- Every run writes to `results/` — a transcript of reasoning plus the metrics. Never delete results.
+- Every run writes to `results/LN_<name>/<ts>/` — raw `metrics.json` + `transcript.md`. Gitignored. Never delete results.
+- At level wrap, the **summary bundle** (`RESULTS.md`, `figures/`, `results.tsv`, `summary/`) is committed under `levels/LN_<name>/` and merged to `main`. See "Wrap convention" above for the full contract.
 - Keep the `autoresearch` dependency as a sibling clone or installed package; do not nest its git repo here.
 
 ## Git guardrails — non-negotiable
 
 - **Never use `git commit --no-verify`.** Pre-commit hooks exist on purpose.
 - **Never force-push.** Never rewrite history on a shared branch.
-- **Never commit** anything in `results/`, `data/`, weights, logs, or `.env`. These are gitignored; do not override the ignore.
+- **Never commit** anything in the top-level `results/`, `data/`, weights, logs, or `.env`. These are gitignored; do not override the ignore. The wrap-time exception is the consolidated bundle under `levels/LN_<name>/` (`RESULTS.md`, `figures/`, `results.tsv`, `summary/`) — that *is* tracked. The carve-out is the bundle, not the raw run dirs.
 - If a commit is rejected by a hook (secret detected, large file), STOP and surface it to me. Do not work around the hook.
 
 ## How to behave when unsure

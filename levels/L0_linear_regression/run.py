@@ -20,13 +20,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = REPO_ROOT / "results" / "L0_linear_regression"
 
-MODEL_DESCRIPTION = "mean-predictor baseline"
+MODEL_DESCRIPTION = "OLS (sklearn LinearRegression)"
 
 
 def make_data(n: int, d: int, noise: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
@@ -40,12 +41,10 @@ def make_data(n: int, d: int, noise: float, seed: int) -> tuple[np.ndarray, np.n
 
 
 def fit_and_predict(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray) -> np.ndarray:
-    """The only function you change between experiments.
-
-    Returns predictions on X_test. Starting baseline: predict the training mean.
-    Expected R² ≈ 0 (predicts the unconditional mean, ignores X entirely).
-    """
-    return np.full(X_test.shape[0], y_train.mean())
+    """The only function you change between experiments."""
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    return model.predict(X_test)
 
 
 def main() -> int:
