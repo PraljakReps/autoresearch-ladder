@@ -1,11 +1,10 @@
-# Run outputs — never commit per CLAUDE.md
+# Raw per-run outputs (timestamped dirs, one per `python run.py` invocation).
+# Wrap-time consolidated artifacts live under levels/LN_<name>/{summary/,figures/,
+# RESULTS.md,results.tsv} and ARE tracked — see CLAUDE.md "Wrap convention".
 results/
 data/
 logs/
 *.log
-
-# Per-level autoresearch experiment log (tab-separated, one row per run)
-levels/**/results.tsv
 
 # Model weights / large artifacts
 *.pt

@@ -1,0 +1,18 @@
+{
+  "level": "L0_linear_regression",
+  "started_at": "2026-05-23T23:09:24.955616+00:00",
+  "finished_at": "2026-05-23T23:09:24.980023+00:00",
+  "duration_seconds": 0.024407,
+  "config": {
+    "n": 1000,
+    "d": 5,
+    "noise": 0.1,
+    "seed": 0,
+    "test_size": 0.2
+  },
+  "model": "OLS (sklearn LinearRegression)",
+  "metrics": {
+    "mse": 0.009762214863927967,
+    "r2": 0.9978962002059608
+  }
+}
