@@ -1,0 +1,40 @@
+# Run outputs — never commit per CLAUDE.md
+results/
+data/
+logs/
+*.log
+
+# Model weights / large artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.h5
+*.npz
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Venvs (live outside the repo on /workspace/envs/, but guard anyway)
+.venv/
+venv/
+env/.venv/
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+.idea/
+*.swp
