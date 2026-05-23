@@ -38,3 +38,7 @@ env/.venv/
 .vscode/
 .idea/
 *.swp
+
+# Session state — per-pod, ephemeral, not part of the repo
+agent-docs/handoffs/
+agent-docs/session-handoff.md
