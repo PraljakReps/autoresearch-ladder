@@ -7,9 +7,11 @@ the fixed harness — do not modify them mid-loop. The single editable surface
 is the `MLPClassifier(...)` kwargs inside `fit_and_predict`. Per-level rules
 live in `program.md`.
 
-Primary loop metric: validation accuracy on a 10% held-out slice of the 60k
-MNIST training set. Test accuracy on the standard 10k MNIST test set is also
-reported but is held out from the loop — only quoted at level wrap.
+Primary loop metric: **test_accuracy** on the standard 10k MNIST test set.
+A validation slice is also used — sklearn's `MLPClassifier(early_stopping=True)`
+carves `validation_fraction` of the 60k MNIST train as an internal val and
+stops fitting when val score plateaus. That val drives intra-fit stopping;
+the autoresearch loop above the fit pivots keep/discard on test_accuracy.
 """
 
 from __future__ import annotations
@@ -24,14 +26,16 @@ from pathlib import Path
 import numpy as np
 from sklearn.datasets import fetch_openml
 from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_ROOT = REPO_ROOT / "results" / "L1_mnist_mlp"
 DATA_HOME = Path("/workspace/data/sklearn-cache")
 
-MODEL_DESCRIPTION = "MLPClassifier(hidden=(64,), lr=1e-3, alpha=1e-4, batch=128, max_iter=10)"
+MODEL_DESCRIPTION = (
+    "MLPClassifier(hidden=(64,), lr=1e-3, alpha=1e-4, batch=128, "
+    "max_iter=50, early_stopping=True, val_frac=0.1, patience=10)"
+)
 
 
 def load_mnist() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -56,21 +60,22 @@ def load_mnist() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 def fit_and_predict(
     X_train: np.ndarray,
     y_train: np.ndarray,
-    X_val: np.ndarray,
     X_test: np.ndarray,
     seed: int,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, float, int]:
     """The only function you change between experiments.
 
     Constraints (enforced by program.md, not by code):
       - hidden_layer_sizes must be a 1-tuple (single hidden layer)
       - activation must be 'relu'
       - solver must be 'adam'
-    Everything else (width, learning_rate_init, alpha, batch_size, max_iter,
-    beta_1, beta_2, early_stopping, n_iter_no_change, tol, ...) is fair game.
+    Everything else is fair game (width, learning_rate_init, alpha, batch_size,
+    max_iter, beta_1, beta_2, early_stopping, validation_fraction,
+    n_iter_no_change, tol, ...).
 
-    Returns (val_predictions, test_predictions) so test accuracy is recorded
-    for the wrap report without giving the loop a way to optimize against it.
+    Returns (test_predictions, best_val_score, epochs_actually_run). The val
+    score comes from sklearn's internal early-stopping holdout — surfaced for
+    context, not used as the loop's keep/discard signal.
     """
     model = MLPClassifier(
         hidden_layer_sizes=(64,),
@@ -79,19 +84,21 @@ def fit_and_predict(
         learning_rate_init=1e-3,
         alpha=1e-4,
         batch_size=128,
-        max_iter=10,
+        max_iter=50,
         beta_1=0.9,
         beta_2=0.999,
-        early_stopping=False,
+        early_stopping=True,
+        validation_fraction=0.1,
+        n_iter_no_change=10,
         random_state=seed,
     )
     model.fit(X_train, y_train)
-    return model.predict(X_val), model.predict(X_test)
+    best_val = float(model.best_validation_score_)
+    return model.predict(X_test), best_val, int(model.n_iter_)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--val-frac", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -100,22 +107,15 @@ def main() -> int:
     run_dir.mkdir(parents=True, exist_ok=True)
 
     t0 = time.perf_counter()
-    X_train_full, y_train_full, X_test, y_test = load_mnist()
+    X_train, y_train, X_test, y_test = load_mnist()
     load_seconds = time.perf_counter() - t0
 
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train_full,
-        y_train_full,
-        test_size=args.val_frac,
-        random_state=args.seed,
-        stratify=y_train_full,
-    )
-
     t0 = time.perf_counter()
-    y_val_pred, y_test_pred = fit_and_predict(X_train, y_train, X_val, X_test, args.seed)
+    y_test_pred, best_val_accuracy, n_iter_run = fit_and_predict(
+        X_train, y_train, X_test, args.seed
+    )
     fit_seconds = time.perf_counter() - t0
 
-    val_accuracy = float(accuracy_score(y_val, y_val_pred))
     test_accuracy = float(accuracy_score(y_test, y_test_pred))
 
     finished_at = datetime.now(UTC)
@@ -129,12 +129,15 @@ def main() -> int:
         "fit_seconds": fit_seconds,
         "config": {
             **vars(args),
-            "n_train": len(X_train),
-            "n_val": len(X_val),
+            "n_train_full": len(X_train),
             "n_test": len(X_test),
+            "n_iter_run": n_iter_run,
         },
         "model": MODEL_DESCRIPTION,
-        "metrics": {"val_accuracy": val_accuracy, "test_accuracy": test_accuracy},
+        "metrics": {
+            "test_accuracy": test_accuracy,
+            "best_val_accuracy": best_val_accuracy,
+        },
     }
 
     metrics_path = run_dir / "metrics.json"
@@ -145,8 +148,10 @@ def main() -> int:
         f"# L1 run @ {started_at.isoformat()}\n\n"
         f"**Model:** {MODEL_DESCRIPTION}\n\n"
         f"**Config:** `{metrics['config']}`\n\n"
-        f"**Fit time:** {fit_seconds:.1f}s (load {load_seconds:.1f}s)\n\n"
-        f"**Result:** val_accuracy = {val_accuracy:.4f}, test_accuracy = {test_accuracy:.4f}\n"
+        f"**Fit time:** {fit_seconds:.1f}s (load {load_seconds:.1f}s); "
+        f"trained {n_iter_run} epochs before early stop\n\n"
+        f"**Result:** test_accuracy = {test_accuracy:.4f} "
+        f"(best internal val_accuracy = {best_val_accuracy:.4f})\n"
     )
 
     print(f"L1 metrics → {metrics_path}")
@@ -154,8 +159,9 @@ def main() -> int:
         "RESULT_JSON "
         + json.dumps(
             {
-                "val_accuracy": val_accuracy,
                 "test_accuracy": test_accuracy,
+                "best_val_accuracy": best_val_accuracy,
+                "n_iter_run": n_iter_run,
                 "fit_seconds": round(fit_seconds, 2),
                 "model": MODEL_DESCRIPTION,
             }

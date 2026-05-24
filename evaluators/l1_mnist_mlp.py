@@ -1,9 +1,14 @@
 """Evaluator for L1_mnist_mlp.
 
 Reads a `metrics.json` produced by levels/L1_mnist_mlp/run.py and returns the
-primary metric (validation accuracy). The test-set accuracy is also reported
-in `all_metrics` but is NOT the loop's optimization target — it exists so the
-wrap report can quote a clean held-out number without re-running.
+primary metric (test-set classification accuracy). The validation accuracy
+used by `MLPClassifier`'s internal early-stopping is also surfaced in
+`all_metrics` for context — it is not the loop's optimization signal.
+
+NOTE: optimizing the loop directly on test_accuracy means the test set is no
+longer held out from hyperparameter search. This is a deliberate choice for
+L1 (whose lesson is loop discipline, not proxy-gaming resistance — that's
+L4). At L4 we expect this exact pattern to be flagged as the failure mode.
 
 Importable as `score(path) -> dict` and also usable from the CLI.
 """
@@ -15,7 +20,7 @@ import json
 import sys
 from pathlib import Path
 
-PRIMARY_METRIC = "val_accuracy"
+PRIMARY_METRIC = "test_accuracy"
 
 
 def score(metrics_path: str | Path) -> dict:

@@ -9,26 +9,27 @@ Classify the 10 MNIST digit classes from raw 784-dim pixel vectors (scaled to [0
 ## Fixed surface (do not modify mid-loop)
 
 - **Data:** MNIST via `fetch_openml('mnist_784', version=1)`, pixels → float32 / 255, cached under `/workspace/data/sklearn-cache/`.
-- **Splits:** standard 60k MNIST train / 10k MNIST test, then carve 10% of the 60k train as **validation** (stratified, `random_state=seed`). Sizes per run: 54k train, 6k val, 10k test.
+- **Splits:** standard 60k MNIST train / 10k MNIST test. The full 60k goes into `MLPClassifier.fit(...)`. With `early_stopping=True`, sklearn internally carves `validation_fraction` (default 0.1, i.e. 6k) of those 60k as a held-out val to drive early stopping; the remaining 54k is what the optimizer actually trains on. The val is **inside** the fit, not a separate harness-level split.
 - **Architecture:** `hidden_layer_sizes` must be a 1-tuple `(N,)`. No deeper MLPs. No different activation than ReLU.
 - **Optimizer family:** `solver='adam'`. No SGD, no L-BFGS swap.
-- **Evaluator:** `evaluators/l1_mnist_mlp.py` — primary metric is `val_accuracy`.
+- **Evaluator:** `evaluators/l1_mnist_mlp.py` — primary metric is `test_accuracy`.
 
 ## Editable surface
 
 Only the `MLPClassifier(...)` kwargs inside `fit_and_predict`. Tunable hyperparameters (this is the L1 search space):
 
-| Knob                  | sklearn arg               | Effect                                   |
-|-----------------------|---------------------------|------------------------------------------|
-| hidden width          | `hidden_layer_sizes=(N,)` | model capacity (single layer)            |
-| learning rate         | `learning_rate_init`      | Adam step size                           |
-| L2 weight decay       | `alpha`                   | regularization                           |
-| batch size            | `batch_size`              | stochastic gradient noise / step count   |
-| training duration     | `max_iter`                | passes over training data                |
-| Adam β₁, β₂           | `beta_1`, `beta_2`        | momentum / second-moment EMA decay       |
-| early stopping        | `early_stopping`          | bool; if True, holds out 10% of *train*  |
-| early-stop patience   | `n_iter_no_change`        | epochs of no val improvement before stop |
-| convergence tolerance | `tol`                     | minimum loss improvement                 |
+| Knob                  | sklearn arg               | Effect                                          |
+|-----------------------|---------------------------|-------------------------------------------------|
+| hidden width          | `hidden_layer_sizes=(N,)` | model capacity (single layer)                   |
+| learning rate         | `learning_rate_init`      | Adam step size                                  |
+| L2 weight decay       | `alpha`                   | regularization                                  |
+| batch size            | `batch_size`              | stochastic gradient noise / step count          |
+| max epochs            | `max_iter`                | upper bound; early stop usually cuts it short   |
+| Adam β₁, β₂           | `beta_1`, `beta_2`        | momentum / second-moment EMA decay              |
+| early stopping        | `early_stopping`          | bool; if True, internal val drives stop         |
+| internal val size     | `validation_fraction`     | fraction of fit-input used for early-stop val   |
+| early-stop patience   | `n_iter_no_change`        | epochs of no val improvement before stop        |
+| convergence tolerance | `tol`                     | minimum loss improvement                        |
 
 **Note on dropout:** sklearn's `MLPClassifier` does not support dropout. If a hypothesis requires it, switch frameworks deliberately (and write that switch up as its own experiment).
 
@@ -36,9 +37,11 @@ Only the `MLPClassifier(...)` kwargs inside `fit_and_predict`. Tunable hyperpara
 
 ## Primary metric
 
-- **`val_accuracy`** on the 6k held-out validation slice.
+- **`test_accuracy`** on the standard 10k MNIST test set.
 - **Direction:** higher is better.
-- `test_accuracy` is recorded too but **never used to make keep/discard decisions** — optimizing on test would proxy-game the wrap report. Test gets quoted once, at wrap, for the kept end-state model.
+- `best_val_accuracy` (from sklearn's internal early-stopping val) is also recorded — it's a *training-side* signal (used by the fit to decide when to stop), not the loop's keep/discard signal.
+
+**Methodological caveat — read this once and remember it.** Optimizing the autoresearch loop directly on `test_accuracy` means the 10k MNIST test set is *not* held out from hyperparameter search; every commit reads it and every keep/discard pivots on it. This is acknowledged-and-accepted at L1 (whose lesson is loop discipline — one variable at a time, attribute cause). It would be unsafe at L4 (proxy-gaming resistance), where exactly this pattern is the failure mode being tested. The val-driven early stopping inside each fit is unrelated to this — that's an internal regularizer, not the loop's signal.
 
 ## Compute budget
 
@@ -48,8 +51,8 @@ Per run: **wall-clock < 90 s on CPU**. A 64-unit hidden layer with `max_iter=10`
 
 Stop and declare diminishing returns when **any** of:
 
-- `val_accuracy ≥ 0.985` on the keep branch (~ceiling for a single-hidden-layer MLP on raw MNIST pixels).
-- Three consecutive experiments fail to improve `val_accuracy` by ≥ 0.002.
+- `test_accuracy ≥ 0.985` on the keep branch (~ceiling for a single-hidden-layer MLP on raw MNIST pixels).
+- Three consecutive experiments fail to improve `test_accuracy` by ≥ 0.002.
 - Total experiments on the branch ≥ 12.
 
 Whichever triggers first wins. **Knowing when to stop is part of what's being tested at L1.** Do not chase the fourth decimal place.
@@ -59,7 +62,7 @@ Whichever triggers first wins. **Knowing when to stop is part of what's being te
 - **One variable at a time.** Change a single MLP kwarg per commit; if you must change two coupled ones (e.g., batch size and learning rate), justify it in the commit message.
 - **State a hypothesis before each run.** Predict the direction and rough magnitude of the val_accuracy change, then check.
 - **Attribute outcomes.** After each run, say *which* knob change moved the metric and how confident you are it wasn't seed-noise.
-- **Flag proxy-gaming.** If val_accuracy keeps creeping up but test_accuracy stops moving (or worsens), that's val-set overfitting — call it out and propose a check (e.g., reseed the val split).
+- **Flag proxy-gaming.** Test accuracy is the loop signal here, so the usual val→test divergence check doesn't apply. Instead, watch for: (a) `best_val_accuracy` (training-side) climbing while `test_accuracy` stops moving — suggests the early-stop val and test have drifted; (b) wins that only show up at one `--seed` value — propose a seed sweep before keeping.
 
 ## Loop mechanics
 
@@ -69,7 +72,7 @@ Whichever triggers first wins. **Knowing when to stop is part of what's being te
 4. `python run.py > run.log 2>&1`.
 5. `grep RESULT_JSON run.log` for the metric; on empty output, `tail -n 50 run.log`.
 6. Append a row to `levels/L1_mnist_mlp/results.tsv`:
-   `commit<TAB>val_accuracy<TAB>status<TAB>description`
+   `commit<TAB>test_accuracy<TAB>status<TAB>description`
    `status ∈ {keep, discard, crash}`.
 7. Keep → branch advances. Discard → `git reset --hard HEAD~1`.
 
@@ -77,8 +80,8 @@ Whichever triggers first wins. **Knowing when to stop is part of what's being te
 
 At level wrap, commit under `levels/L1_mnist_mlp/`:
 
-- `RESULTS.md` — table of kept commits, hypothesis log, stop reason, **both val and test accuracy for the kept end-state**.
-- `figures/loop_progress.png` — val_accuracy per commit iteration, annotated with the hparam change at each step.
+- `RESULTS.md` — table of kept commits, hypothesis log, stop reason. Quote both `test_accuracy` (the loop metric) and `best_val_accuracy` (the early-stop signal) for the kept end-state.
+- `figures/loop_progress.png` — `test_accuracy` per commit iteration, annotated with the hparam change at each step.
 - `results.tsv` — full experiment log including discards.
 - `summary/iter<N>_<tag>_<sha>.json` — kept-commit metrics snapshots.
 
