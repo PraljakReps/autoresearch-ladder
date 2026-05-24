@@ -11,9 +11,9 @@ The ladder climbs two axes: how **open-ended** the search is (known target → g
 | Level | Task | New capability under test |
 |-------|------|---------------------------|
 | L0 | Linear regression fit | Plumbing: launch job, parse result, report |
-| L1 | Hyperparameter search, fixed model | Loop discipline: one variable at a time, attribute cause |
-| L2 | MNIST — find an architecture | Structural search; knowing when to STOP |
-| L3 | Task with unknown-but-checkable target | Discovery vs. optimizing toward a known number |
+| L1 | MNIST + 1-hidden ReLU MLP + Adam, **hparams only** | Loop discipline on an easy dataset |
+| L2 | **CIFAR-100** + shallow MLP + Adam, **hparams only** | Same discipline, harder dataset where hparam choices actually bite |
+| L3 | **CIFAR-100, architecture open** | Structural search; knowing when to STOP |
 | L4 | Gameable metric vs. true objective | Proxy-gaming resistance |
 | L5 | Algorithm discovery w/ automatic verifier | Open-ended code search strategy |
 
