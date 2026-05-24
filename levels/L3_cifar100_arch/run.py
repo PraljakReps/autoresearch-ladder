@@ -54,7 +54,7 @@ class ModelConfig:
     """Editable surface: architecture knobs. Add/rename fields as experiments
     require (e.g. `dropout_p`, `n_conv_blocks`, `use_batchnorm`)."""
 
-    conv_channels: tuple[int, ...] = (64, 128, 256, 512)
+    conv_channels: tuple[int, ...] = (96, 192, 384, 768)
     head_hidden: int = 256
     use_batchnorm: bool = True
 
