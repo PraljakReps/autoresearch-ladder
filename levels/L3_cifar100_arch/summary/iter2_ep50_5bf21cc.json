@@ -1,0 +1,33 @@
+{
+  "level": "L3_cifar100_arch",
+  "started_at": "2026-05-24T08:30:39.994234+00:00",
+  "finished_at": "2026-05-24T08:31:28.223386+00:00",
+  "duration_seconds": 48.229152,
+  "load_seconds": 11.228429935872555,
+  "fit_seconds": 36.99859996885061,
+  "device": "cuda",
+  "config": {
+    "seed": 0,
+    "data_normalization": "none",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "batch_size": 128,
+    "max_epochs": 50,
+    "patience": 10,
+    "val_fraction": 0.1,
+    "model": {
+      "hidden_width": 1024
+    },
+    "n_train_full": 50000,
+    "n_test": 10000,
+    "n_iter_run": 50,
+    "n_params": 3249252
+  },
+  "model": "MLP(\n  (fc1): Linear(in_features=3072, out_features=1024, bias=True)\n  (fc2): Linear(in_features=1024, out_features=100, bias=True)\n)",
+  "metrics": {
+    "test_accuracy": 0.2677,
+    "best_val_accuracy": 0.2674
+  }
+}

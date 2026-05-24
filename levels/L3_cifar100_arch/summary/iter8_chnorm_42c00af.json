@@ -1,0 +1,40 @@
+{
+  "level": "L3_cifar100_arch",
+  "started_at": "2026-05-24T08:48:14.776979+00:00",
+  "finished_at": "2026-05-24T08:50:05.409725+00:00",
+  "duration_seconds": 110.632746,
+  "load_seconds": 10.568700961768627,
+  "fit_seconds": 100.06259954720736,
+  "device": "cuda",
+  "config": {
+    "seed": 0,
+    "data_normalization": "channel",
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "batch_size": 128,
+    "max_epochs": 50,
+    "patience": 10,
+    "val_fraction": 0.1,
+    "model": {
+      "conv_channels": [
+        64,
+        128,
+        256,
+        512
+      ],
+      "head_hidden": 256,
+      "use_batchnorm": true
+    },
+    "n_train_full": 50000,
+    "n_test": 10000,
+    "n_iter_run": 41,
+    "n_params": 2102180
+  },
+  "model": "SimpleConv(\n  (features): Sequential(\n    (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n    (2): ReLU(inplace=True)\n    (3): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)\n    (4): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n    (5): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n    (6): ReLU(inplace=True)\n    (7): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)\n    (8): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n    (9): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n    (10): ReLU(inplace=True)\n    (11): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)\n    (12): Conv2d(256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n    (13): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n    (14): ReLU(inplace=True)\n    (15): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)\n  )\n  (head): Sequential(\n    (0): Linear(in_features=2048, out_features=256, bias=True)\n    (1): ReLU(inplace=True)\n    (2): Linear(in_features=256, out_features=100, bias=True)\n  )\n)",
+  "metrics": {
+    "test_accuracy": 0.5405,
+    "best_val_accuracy": 0.5312
+  }
+}
