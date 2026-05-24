@@ -54,7 +54,8 @@ class ModelConfig:
     """Editable surface: architecture knobs. Add/rename fields as experiments
     require (e.g. `dropout_p`, `n_conv_blocks`, `use_batchnorm`)."""
 
-    hidden_width: int = 1024
+    conv_channels: tuple[int, ...] = (32, 64, 128)
+    head_hidden: int = 256
 
 
 @dataclass
@@ -108,32 +109,50 @@ def apply_normalization(x: torch.Tensor, mode: str) -> torch.Tensor:
     raise ValueError(f"unknown data_normalization mode: {mode!r}")
 
 
-class MLP(nn.Module):
-    """Floor architecture: flatten -> hidden (ReLU) -> NUM_CLASSES logits.
+class SimpleConv(nn.Module):
+    """Small CNN: stacked Conv->ReLU->MaxPool blocks, then a 2-layer MLP head.
 
-    Matches L2's locked architecture (adapted to accept NCHW input and flatten
-    internally). Edit `build_model` to swap this for a different topology.
+    Each block halves spatial dims (32 -> 16 -> 8 -> 4 for the default
+    3-channel tuple). Final feature map flattened and fed to a ReLU MLP head.
+    No batchnorm, no dropout, no residuals — those are separate experiments.
     """
 
-    def __init__(self, hidden_width: int):
+    def __init__(self, conv_channels: tuple[int, ...], head_hidden: int):
         super().__init__()
-        in_dim = INPUT_SHAPE[0] * INPUT_SHAPE[1] * INPUT_SHAPE[2]
-        self.fc1 = nn.Linear(in_dim, hidden_width)
-        self.fc2 = nn.Linear(hidden_width, NUM_CLASSES)
+        layers: list[nn.Module] = []
+        in_c = INPUT_SHAPE[0]
+        spatial = INPUT_SHAPE[1]
+        for out_c in conv_channels:
+            layers.append(nn.Conv2d(in_c, out_c, kernel_size=3, padding=1))
+            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.MaxPool2d(kernel_size=2))
+            in_c = out_c
+            spatial //= 2
+        self.features = nn.Sequential(*layers)
+        feat_dim = in_c * spatial * spatial
+        self.head = nn.Sequential(
+            nn.Linear(feat_dim, head_hidden),
+            nn.ReLU(inplace=True),
+            nn.Linear(head_hidden, NUM_CLASSES),
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
         x = x.flatten(start_dim=1)
-        return self.fc2(F.relu(self.fc1(x)))
+        return self.head(x)
 
 
 def build_model(model_cfg: ModelConfig) -> nn.Module:
-    """The editable architecture surface. Replace MLP with whatever you're
+    """The editable architecture surface. Replace this with whatever you're
     testing this iteration — Conv2d stacks, residual blocks, dropout, norms.
 
     Contract: takes input shape INPUT_SHAPE (NCHW), returns logits of shape
     (B, NUM_CLASSES). No softmax — cross_entropy applies it.
     """
-    return MLP(hidden_width=model_cfg.hidden_width)
+    return SimpleConv(
+        conv_channels=model_cfg.conv_channels,
+        head_hidden=model_cfg.head_hidden,
+    )
 
 
 def count_params(model: nn.Module) -> int:
