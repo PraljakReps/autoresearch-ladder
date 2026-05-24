@@ -80,9 +80,9 @@ Karpathy's `program.md` says **never stop** — keep generating ideas until the 
 ## Environment & infrastructure rules
 
 - **Anything precious lives on `/workspace`** (repos, envs, data, outputs). The container root is throwaway.
-- Conda env is on the persistent volume: `conda activate /workspace/envs/autoresearch`. (Pure-Python harness work may use `uv`; the heavy scientific stack stays on conda.)
+- Python env is a uv venv at `/workspace/envs/autoresearch-uv/` (Python 3.12, sklearn + numpy + matplotlib + torch + torchvision with CUDA 12.4 wheels for the A40). Activate by calling `/workspace/envs/autoresearch-uv/bin/python` directly, or `source /workspace/envs/autoresearch-uv/bin/activate`. The earlier plan to use a separate conda env at `/workspace/envs/autoresearch/` was dropped — everything lives in the uv venv.
 - **Long jobs run inside `tmux`** so a dropped connection does not kill them. Start: `tmux new -s research` · detach: Ctrl-b then d · reattach: `tmux attach -t research`.
-- **Stop the GPU when not actively running jobs.** Compute is metered; idle GPU is wasted money. Treat compute as a budgeted resource and prefer the cheapest evaluation that answers the question.
+- **GPU available**: NVIDIA A40 (~48 GB). **Stop the GPU when not actively running jobs.** Compute is metered; idle GPU is wasted money. Treat compute as a budgeted resource and prefer the cheapest evaluation that answers the question.
 
 ## Repo conventions
 
