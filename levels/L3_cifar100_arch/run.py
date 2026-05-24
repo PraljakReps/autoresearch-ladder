@@ -63,7 +63,7 @@ class ModelConfig:
 class TrainConfig:
     """Editable surface: training-loop knobs and data prep."""
 
-    data_normalization: str = "none"  # "none" | "channel"
+    data_normalization: str = "channel"  # "none" | "channel"
 
     learning_rate: float = 3e-4
     weight_decay: float = 1e-4
