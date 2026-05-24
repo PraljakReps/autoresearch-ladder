@@ -1,0 +1,11 @@
+commit	test_accuracy	status	description
+52dc980	0.0100	keep	floor: hidden=16 max_epochs=2 (chance-level, never escaped init in 2 epochs; predicted 0.06-0.10, observed 0.01)
+ccffb75	0.1486	keep	hidden 16->256 (capacity recovery): predicted 0.08-0.15, observed 0.1486; still 2-epoch capped
+37f415a	0.2065	keep	max_epochs 2->50 (duration recovery): predicted 0.18-0.22, observed 0.2065; matches wiring baseline (37 epochs, 28s)
+7678e6e	0.2248	keep	hidden 256->512: predicted +0.02-0.04, observed +0.0183 (val 0.2334, 46 epochs, 36s); val/test gap growing
+f25da9e	0.2289	keep	hidden 512->1024: predicted +0.01-0.025, observed +0.0041 (val 0.238, 36 epochs, 27s); diminishing returns, val/test gap=0.009; non-improvement counter 1/3
+faf1aa3	0.2285	discard	wd 1e-4->1e-3: predicted +0.005-0.015, observed -0.0004 (val 0.2282, 35 epochs, 26s); closed overfit gap (val/test=-0.0003) without earning test; counter 2/3
+5e8a55f	0.2677	keep	lr 1e-3->3e-4: predicted +0.005-0.015, observed +0.0388 (val 0.2674, 50 epochs HIT CAP, 35s); model didn't plateau — more epochs likely earns more; counter reset 0/3
+3f91f13	0.2677	discard	max_epochs 50->100: predicted +0.005-0.020, observed +0.0000 (val 0.2674, 55 epochs early-stop, 41s); best_val plateaued before 50 — cap wasn't binding; counter 1/3
+2bcf3b9	0.2565	discard	batch 128->64: predicted +0.005-0.015, observed -0.0112 (val 0.2582, 50 epochs HIT CAP, 75s); regressed; smaller batch needed more epochs to compensate; counter 2/3
+ae1527f	0.2666	discard	hidden 1024->2048: predicted +0.005-0.015, observed -0.0011 (val 0.2680, 43 epochs, 33s); capacity ceiling reached at lr=3e-4; counter 3/3 — STOP CRITERION FIRED
