@@ -41,7 +41,7 @@ NUM_CLASSES = 100
 class TrainConfig:
     """Editable surface. Tune these between experiments; nothing else."""
 
-    hidden_width: int = 16
+    hidden_width: int = 256
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
     batch_size: int = 128
