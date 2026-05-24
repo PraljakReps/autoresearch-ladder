@@ -45,7 +45,7 @@ class TrainConfig:
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
     batch_size: int = 128
-    max_epochs: int = 2
+    max_epochs: int = 50
     patience: int = 10
     val_fraction: float = 0.1
     beta1: float = 0.9
