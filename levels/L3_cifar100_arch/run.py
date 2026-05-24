@@ -56,6 +56,7 @@ class ModelConfig:
 
     conv_channels: tuple[int, ...] = (32, 64, 128)
     head_hidden: int = 256
+    use_batchnorm: bool = True
 
 
 @dataclass
@@ -117,13 +118,15 @@ class SimpleConv(nn.Module):
     No batchnorm, no dropout, no residuals — those are separate experiments.
     """
 
-    def __init__(self, conv_channels: tuple[int, ...], head_hidden: int):
+    def __init__(self, conv_channels: tuple[int, ...], head_hidden: int, use_batchnorm: bool):
         super().__init__()
         layers: list[nn.Module] = []
         in_c = INPUT_SHAPE[0]
         spatial = INPUT_SHAPE[1]
         for out_c in conv_channels:
-            layers.append(nn.Conv2d(in_c, out_c, kernel_size=3, padding=1))
+            layers.append(nn.Conv2d(in_c, out_c, kernel_size=3, padding=1, bias=not use_batchnorm))
+            if use_batchnorm:
+                layers.append(nn.BatchNorm2d(out_c))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.MaxPool2d(kernel_size=2))
             in_c = out_c
@@ -152,6 +155,7 @@ def build_model(model_cfg: ModelConfig) -> nn.Module:
     return SimpleConv(
         conv_channels=model_cfg.conv_channels,
         head_hidden=model_cfg.head_hidden,
+        use_batchnorm=model_cfg.use_batchnorm,
     )
 
 
