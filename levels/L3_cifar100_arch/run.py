@@ -69,7 +69,7 @@ class TrainConfig:
     beta2: float = 0.999
 
     batch_size: int = 128
-    max_epochs: int = 2  # floor: 2 epochs, won't escape init at tiny capacity
+    max_epochs: int = 50
     patience: int = 10
     val_fraction: float = 0.1
 
