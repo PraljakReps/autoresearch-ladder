@@ -1,0 +1,29 @@
+{
+  "level": "L2_cifar100_mlp",
+  "started_at": "2026-05-24T01:33:38.401990+00:00",
+  "finished_at": "2026-05-24T01:34:17.932557+00:00",
+  "duration_seconds": 39.530567,
+  "load_seconds": 11.055694788694382,
+  "fit_seconds": 28.469892419874668,
+  "device": "cuda",
+  "config": {
+    "seed": 0,
+    "hidden_width": 256,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "batch_size": 128,
+    "max_epochs": 50,
+    "patience": 10,
+    "val_fraction": 0.1,
+    "beta1": 0.9,
+    "beta2": 0.999,
+    "n_train_full": 50000,
+    "n_test": 10000,
+    "n_iter_run": 37
+  },
+  "model": "MLP(hidden=256) Adam(lr=0.001, wd=0.0001)",
+  "metrics": {
+    "test_accuracy": 0.2065,
+    "best_val_accuracy": 0.2138
+  }
+}
