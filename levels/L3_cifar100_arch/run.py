@@ -54,7 +54,7 @@ class ModelConfig:
     """Editable surface: architecture knobs. Add/rename fields as experiments
     require (e.g. `dropout_p`, `n_conv_blocks`, `use_batchnorm`)."""
 
-    hidden_width: int = 16  # floor: deliberately undertrained, climb from here
+    hidden_width: int = 1024
 
 
 @dataclass
