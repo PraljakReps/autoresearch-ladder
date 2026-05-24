@@ -1,1 +1,11 @@
 commit	test_accuracy	status	description
+d5706ad	0.0100	keep	floor: hidden=16 max_epochs=2 raw pixels (chance-level, n_params=50868, 2.5s, matches L2 floor exactly — wiring verified)
+41e4891	0.1497	keep	exp1: hidden_width 16->1024 (capacity recovery): predicted 0.08-0.12, observed 0.1497; matches L2's exp1 at same setup
+5bf21cc	0.2677	keep	exp2: max_epochs 2->50 (duration recovery): predicted 0.25-0.28, observed 0.2677 EXACTLY matching L2 wrap (determinism confirmed); n_params=3.25M
+6d814a2	0.2514	discard	exp3: data_normalization none->channel: predicted +0.01-0.03, observed -0.0163; early-stopped at epoch 21 vs 50 — normalization shifted effective lr regime, Adam converged to worse minimum faster; counter 1/3
+f7fe0ab	0.3963	keep	exp4: MLP -> SimpleConv (3-conv stack 32/64/128 + MLP head 256, raw pixels): predicted +0.10-0.15, observed +0.1286 (0.2677 -> 0.3963, val 0.3884, 43 epochs, 76s, n_params=643K — 5x fewer than MLP); counter reset 0/3
+b62a332	0.4645	keep	exp5: +BatchNorm2d after each Conv: predicted +0.05-0.10, observed +0.0682 (val 0.4712, 21 epochs early-stop — BN converges faster, 43s); counter 0/3
+0b26536	0.5199	keep	exp6: conv_channels (32,64,128)->(64,128,256) (4x conv capacity): predicted +0.03-0.06, observed +0.0554 (val 0.5200, 47 epochs, 95s, n_params=1.45M); counter 0/3 — within 0.03 of ceiling
+322add1	0.5308	keep	exp7: conv depth 3->4 blocks (+512 channel at spatial 2x2): predicted +0.02-0.05, observed +0.0109 (val 0.5344, 48 epochs, 125s, n_params=2.1M); counter 0/3, diminishing returns starting
+42c00af	0.5405	keep	exp8: data_normalization none->channel REVISIT (now with CNN+BN): predicted +0.005-0.02, observed +0.0097 (val 0.5312 < test, 41 epochs, 100s); BN absorbed the iter-3 lr-regime issue; counter 0/3 — 0.0095 from ceiling
+e3e2853	0.5668	keep	exp9: conv_channels (64,128,256,512)->(96,192,384,768) (~2.25x conv params): predicted +0.01-0.03, observed +0.0263 (val 0.5608, 33 epochs, 91s, n_params=4.3M); test_accuracy>=0.55 — CEILING STOP CRITERION FIRES
